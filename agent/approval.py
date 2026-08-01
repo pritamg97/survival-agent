@@ -18,24 +18,37 @@ class ApprovalGate:
     Fails closed: if SMTP/IMAP aren't configured, requests silently can't be
     sent and replies can never be found, so gated actions never fire."""
 
-    def send_request(self, opportunity: dict) -> Optional[dict]:
+    ACTION_DESCRIPTIONS = {
+        "service_arbitrage": "post an offer/reply under your identity on a real listing",
+        "micro_saas": "deploy a real, live product page and create a real payable Stripe product",
+        "content_farm": "publish a real, live article under your identity",
+    }
+
+    def send_request(self, opportunity: dict, strategy: str = "service_arbitrage") -> Optional[dict]:
         token = uuid.uuid4().hex[:8]
-        subject = f"[Survival Agent] Approve real bid? ({token})"
+        action = self.ACTION_DESCRIPTIONS.get(strategy, "take a real-world action under your identity")
+        subject = f"[Survival Agent] Approve: {strategy} ({token})"
         body = (
-            "The agent found a real opportunity and wants to post an offer under "
-            "your identity. It will NOT act until you reply.\n\n"
+            f"The agent wants to {action}. It will NOT act until you reply.\n\n"
+            f"Strategy: {strategy}\n"
             f"Niche: {opportunity.get('niche')}\n"
             f"Problem: {opportunity.get('problem')}\n"
             f"Proposed action: {opportunity.get('solution')}\n"
             f"Price point: ${opportunity.get('price_point')}\n"
-            f"Source: {opportunity.get('source_url')}\n\n"
+            f"Source: {opportunity.get('source_url') or 'n/a (agent-originated, not sourced from a listing)'}\n\n"
             f"Reply to this email with the words APPROVE {token} to let it proceed, "
             f"or REJECT {token} to skip it.\n"
             f"No reply within {CONFIG.APPROVAL_TIMEOUT_HOURS}h is treated as a rejection."
         )
         if not self._send(subject, body):
             return None
-        return {"token": token, "opportunity": opportunity, "subject": subject, "sent_at": time.time()}
+        return {
+            "token": token,
+            "opportunity": opportunity,
+            "strategy": strategy,
+            "subject": subject,
+            "sent_at": time.time(),
+        }
 
     def _send(self, subject: str, body: str) -> bool:
         if not (CONFIG.EMAIL_SMTP_HOST and CONFIG.EMAIL_SMTP_USER and CONFIG.APPROVAL_EMAIL_TO):

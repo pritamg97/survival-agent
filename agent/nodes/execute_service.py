@@ -25,10 +25,15 @@ def execute_service(state: SurvivalState) -> SurvivalState:
 
 def _execute_real_bid(state: SurvivalState, opportunity: dict) -> SurvivalState:
     from agent.actions.reddit_bid import post_bid_comment
+    from agent.integrations.stripe_client import create_payment_link
 
+    price = float(opportunity.get("price_point") or 25)
+    link = create_payment_link(f"Service: {opportunity.get('niche', 'job')}", price)
+
+    payment_line = f" Pay here when you're happy with the work: {link['url']}" if link else ""
     message = (
         f"Hi — I can help with this: {opportunity.get('solution')}. "
-        f"Rate: ${opportunity.get('price_point')}. Reply here if interested."
+        f"Rate: ${price:.2f}.{payment_line} Reply here if interested."
     )
     posted = post_bid_comment(opportunity["source_url"], message)
     state["current_opportunity_approved"] = False  # consume the one-time approval
@@ -36,9 +41,20 @@ def _execute_real_bid(state: SurvivalState, opportunity: dict) -> SurvivalState:
     if posted:
         state["working_memory"].append(f"Posted real bid on {opportunity['source_url']}")
         LOGGER.info(f"Posted real bid on {opportunity['source_url']}")
-        # Outcome depends on the client replying off-platform — this records the
-        # outreach, not a payment. No autonomous payment collection is wired up;
-        # revenue still only lands via metabolism.revenue() calls elsewhere.
+        if link:
+            state["service_bids"].append(
+                {
+                    "niche": opportunity.get("niche"),
+                    "source_url": opportunity["source_url"],
+                    "price": price,
+                    "stripe_payment_link_id": link["payment_link_id"],
+                    "stripe_payment_link_url": link["url"],
+                    "stripe_seen_sessions": [],
+                    "posted_at": state["cycle_start_time"],
+                }
+            )
+        else:
+            state["working_memory"].append("Note: bid posted without a payment link (Stripe not configured)")
     else:
         state["consecutive_failures"] += 1
         state["working_memory"].append(f"Real bid post failed on {opportunity['source_url']}")

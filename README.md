@@ -62,12 +62,46 @@ requires `EMAIL_SMTP_*`/`EMAIL_IMAP_*` config; with Gmail, use an
 Even with the approval granted, real posting is off by default. Set
 `ENABLE_REAL_BIDDING=true` and provide `REDDIT_USERNAME`/`REDDIT_PASSWORD` to let
 an approved bid post a real, visible comment on the sourced Reddit thread offering
-to do the job — under your Reddit account. Two things this does *not* do:
-it does not submit real Upwork proposals (no such API exists for self-serve use),
-and it does not collect payment automatically — a real bid just records the
-outreach in `working_memory`; no Stripe/payment wiring exists yet, so any money
-that actually comes in from a real client still isn't reflected in `bank_balance`
-without further work.
+to do the job — under your Reddit account. This does *not* submit real Upwork
+proposals (no such API exists for self-serve use).
+
+## Real deployment (Stripe + Vercel)
+
+By default, `execute_build` (micro_saas) and `execute_content` (content_farm)
+are pure simulation: fabricated URLs, dice-roll "sales." Set
+`ENABLE_REAL_DEPLOYMENT=true` (plus `VERCEL_TOKEN` and `STRIPE_SECRET_KEY`) to make
+them real:
+
+- **micro_saas** generates a real single-page site, creates a **real Stripe
+  product + price + payment link**, deploys the page live to Vercel with the
+  payment link wired into the buy button, and stores the product with
+  `real: true` in `state.products`.
+- **content_farm** generates and actually deploys the article to a live Vercel
+  URL. There's no ad-network integration, so a real publish earns $0
+  automatically — monetizing it for real needs an ads account wired up separately.
+- A `service_arbitrage` real bid (see above) also gets a real Stripe payment
+  link attached to the outreach message, so an interested client has somewhere
+  real to pay.
+
+Just like real bidding, real deployment is gated by the same email approval —
+the agent stops and asks before creating a real Stripe product or publishing
+real content under your identity, not just before posting on Reddit. Deploying
+the *same* niche twice is a no-op (checked against already-live products) so
+naive-mode's 3-cycle niche rotation doesn't spam duplicate Stripe products.
+
+`collect_revenue` reflects the split automatically: any product or bid with a
+`stripe_payment_link_id` is reconciled against **actual confirmed Stripe
+Checkout Sessions** (polled each cycle, deduped by session id so nothing is
+double-counted) — no more dice rolls for that item. Everything else keeps
+rolling dice as before. `STRIPE_SECRET_KEY` can be a `sk_test_` key to rehearse
+with Stripe's test cards, or `sk_live_` once you actually want to charge real
+customers — the code doesn't care which, it just uses whatever's configured.
+
+What's still not automated even in real mode: the server-burn number
+(`SERVER_BURN_PER_HOUR`) is a configured assumption, not metered against
+whatever you're actually hosting this on; and nothing in `execute_build`
+maintains the deployed product after launch (bug fixes, customer support,
+etc. — it just deploys once and waits for `collect_revenue` to poll for sales).
 
 ## Monthly targets
 

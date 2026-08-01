@@ -122,6 +122,14 @@ class Config:
     REDDIT_USERNAME: str = os.environ.get("REDDIT_USERNAME", "")
     REDDIT_PASSWORD: str = os.environ.get("REDDIT_PASSWORD", "")
 
+    # Real deployment: actually publish micro-SaaS landing pages / content
+    # articles to a live URL (Vercel) and actually create a payable Stripe
+    # product/payment link, instead of fabricating a URL and rolling dice for
+    # revenue. Same email-approval gate as ENABLE_REAL_BIDDING covers this too.
+    ENABLE_REAL_DEPLOYMENT: bool = _bool("ENABLE_REAL_DEPLOYMENT", False)
+    VERCEL_TOKEN: str = os.environ.get("VERCEL_TOKEN", "")
+    VERCEL_TEAM_ID: str = os.environ.get("VERCEL_TEAM_ID", "")
+
     def get_monthly_target(self, month: int) -> float:
         if month in self.MONTHLY_TARGETS:
             return self.MONTHLY_TARGETS[month]
