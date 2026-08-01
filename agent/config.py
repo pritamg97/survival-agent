@@ -74,6 +74,14 @@ class Config:
         ) if k
     ))
     GOOGLE_AI_STUDIO_KEY: str = os.environ.get("GOOGLE_AI_STUDIO_KEY", "")
+    # Google AI Studio's per-model daily quota varies a lot by tier — check
+    # aistudio.google.com's rate-limit dashboard for your account and set this
+    # to whichever model actually has the request budget you want (the "Flash
+    # Lite" tier of a given generation is often several times the RPD of the
+    # plain "Flash" tier of the same generation).
+    GOOGLE_AI_STUDIO_MODEL: str = os.environ.get("GOOGLE_AI_STUDIO_MODEL", "gemini-2.5-flash-lite")
+    GOOGLE_AI_STUDIO_RPM: int = _int("GOOGLE_AI_STUDIO_RPM", 10)
+    GOOGLE_AI_STUDIO_RPD: int = _int("GOOGLE_AI_STUDIO_RPD", 20)
     NVIDIA_NIM_KEY: str = os.environ.get("NVIDIA_NIM_KEY", "")
     GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
     OPENROUTER_KEY: str = os.environ.get("OPENROUTER_KEY", "")

@@ -11,14 +11,18 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from agent.config import CONFIG
 from agent.logger import LOGGER
 
-# task_type -> ordered provider priority
+# task_type -> ordered provider priority. Mistral leads everywhere (6 keys,
+# highest configured quota) with Google AI Studio as the immediate fallback;
+# nvidia-nim/groq/openrouter-free only enter the mix once those keys exist —
+# unconfigured providers are simply absent from self.providers, so they're
+# skipped automatically rather than needing a separate flag.
 TASK_PRIORITY: Dict[str, List[str]] = {
-    "coding": ["mistral", "nvidia-nim", "google-ai-studio", "groq", "openrouter-free"],
-    "research": ["google-ai-studio", "nvidia-nim", "mistral", "groq"],
-    "fast": ["groq", "mistral", "google-ai-studio"],
-    "reasoning": ["nvidia-nim", "mistral", "google-ai-studio"],
+    "coding": ["mistral", "google-ai-studio", "nvidia-nim", "groq", "openrouter-free"],
+    "research": ["mistral", "google-ai-studio", "nvidia-nim", "groq"],
+    "fast": ["mistral", "google-ai-studio", "groq"],
+    "reasoning": ["mistral", "google-ai-studio", "nvidia-nim"],
     "marketing": ["mistral", "google-ai-studio", "openrouter-free"],
-    "emergency": ["nvidia-nim", "mistral", "google-ai-studio"],
+    "emergency": ["mistral", "google-ai-studio", "nvidia-nim"],
     "general": ["mistral", "google-ai-studio", "nvidia-nim", "groq"],
 }
 
@@ -58,13 +62,18 @@ class ZeroCostRouter:
                 rate_limit_rpd=500,
             )
         if CONFIG.GOOGLE_AI_STUDIO_KEY:
+            # Google AI Studio's per-model quota varies wildly by tier — check
+            # your own console (aistudio.google.com/app/apikey -> rate limits)
+            # and set GOOGLE_AI_STUDIO_MODEL to whichever "Flash Lite" tier
+            # shows the highest requests-per-day; regular Flash tiers are often
+            # capped much lower (e.g. 20 RPD) than the Flash Lite tier (e.g. 500 RPD).
             self.providers["google-ai-studio"] = ProviderConfig(
                 name="google-ai-studio",
                 api_key=CONFIG.GOOGLE_AI_STUDIO_KEY,
                 base_url="https://generativelanguage.googleapis.com/v1beta/openai",
-                models=["gemini-1.5-flash"],
-                rate_limit_rpm=15,
-                rate_limit_rpd=1500,
+                models=[CONFIG.GOOGLE_AI_STUDIO_MODEL],
+                rate_limit_rpm=CONFIG.GOOGLE_AI_STUDIO_RPM,
+                rate_limit_rpd=CONFIG.GOOGLE_AI_STUDIO_RPD,
             )
         if CONFIG.NVIDIA_NIM_KEY:
             self.providers["nvidia-nim"] = ProviderConfig(
@@ -134,22 +143,30 @@ class ZeroCostRouter:
         payload = json.dumps({"messages": messages, "model": model}, sort_keys=True)
         return hashlib.sha256(payload.encode()).hexdigest()
 
-    def get_provider_for_task(
-        self, task_type: str = "general", required_quality: str = "standard"
-    ) -> Optional[Tuple[OpenAI, ProviderConfig, str]]:
+    def _ordered_candidates(self, task_type: str) -> List[ProviderConfig]:
+        """Full priority-ordered candidate list for a task type (not filtered
+        by availability — callers walk it and skip/try as appropriate)."""
         priority = TASK_PRIORITY.get(task_type, TASK_PRIORITY["general"])
 
         candidates: List[ProviderConfig] = []
         mistral_keys = [p for name, p in self.providers.items() if name.startswith("mistral-")]
-        random.shuffle(mistral_keys)
+        random.shuffle(mistral_keys)  # load-balance across the 6 keys
 
         for family in priority:
             if family == "mistral":
                 candidates.extend(mistral_keys)
             elif family in self.providers:
                 candidates.append(self.providers[family])
+        return candidates
 
-        for provider in candidates:
+    def get_provider_for_task(
+        self, task_type: str = "general", required_quality: str = "standard"
+    ) -> Optional[Tuple[OpenAI, ProviderConfig, str]]:
+        """Returns the single best available provider right now, without
+        attempting a call. call() below is what actually cascades through
+        the full candidate list on failure — this is for inspection/spec
+        compatibility."""
+        for provider in self._ordered_candidates(task_type):
             if self._is_available(provider):
                 return self._client_for(provider), provider, provider.models[0]
         return None
@@ -169,6 +186,13 @@ class ZeroCostRouter:
         max_tokens: int = 2048,
         use_cache: bool = True,
     ) -> str:
+        """Tries every candidate provider for this task type, in priority
+        order, until one succeeds. Each provider gets its own exponential
+        backoff retry internally (_call_provider, 3 attempts) before this
+        method gives up on it and cascades to the next — e.g. a Mistral key
+        that times out gets retried with backoff on Mistral first, and only
+        moves on to Google (or the next Mistral key) once that key's own
+        retries are exhausted. Raises only if every candidate fails."""
         cache_key = None
         if use_cache and CONFIG.ENABLE_CACHE:
             cache_key = self._get_cache_key(messages, task_type)
@@ -176,37 +200,47 @@ class ZeroCostRouter:
                 LOGGER.debug("Router cache hit")
                 return self._cache[cache_key]
 
-        picked = self.get_provider_for_task(task_type, required_quality)
-        if picked is None:
-            raise RuntimeError("No LLM provider available (all rate-limited or unconfigured)")
+        candidates = self._ordered_candidates(task_type)
+        if not candidates:
+            raise RuntimeError(f"No LLM provider configured for task_type={task_type}")
 
-        client, provider, model = picked
-        try:
-            response = self._call_provider(client, model, messages, temperature, max_tokens)
-            content = response.choices[0].message.content or ""
-            usage = getattr(response, "usage", None)
-            input_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
-            output_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
-            self._mark_success(provider, input_tokens + output_tokens)
+        last_error: Optional[Exception] = None
+        for provider in candidates:
+            if not self._is_available(provider):
+                continue
 
-            from agent.metabolism import Metabolism  # local import avoids cycle at module load
+            client = self._client_for(provider)
+            model = provider.models[0]
+            try:
+                response = self._call_provider(client, model, messages, temperature, max_tokens)
+                content = response.choices[0].message.content or ""
+                usage = getattr(response, "usage", None)
+                input_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
+                output_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
+                self._mark_success(provider, input_tokens + output_tokens)
 
-            LOGGER.info(
-                f"LLM call ok: provider={provider.name} model={model} "
-                f"tokens={input_tokens}+{output_tokens} cost=$0"
-            )
+                LOGGER.info(
+                    f"LLM call ok: provider={provider.name} model={model} "
+                    f"tokens={input_tokens}+{output_tokens} cost=$0"
+                )
 
-            if use_cache and CONFIG.ENABLE_CACHE and cache_key:
-                self._cache[cache_key] = content
-                self._cache_order.append(cache_key)
-                if len(self._cache_order) > CONFIG.CACHE_MAX_SIZE:
-                    oldest = self._cache_order.pop(0)
-                    self._cache.pop(oldest, None)
+                if use_cache and CONFIG.ENABLE_CACHE and cache_key:
+                    self._cache[cache_key] = content
+                    self._cache_order.append(cache_key)
+                    if len(self._cache_order) > CONFIG.CACHE_MAX_SIZE:
+                        oldest = self._cache_order.pop(0)
+                        self._cache.pop(oldest, None)
 
-            return content
-        except Exception as e:  # noqa: BLE001
-            self._mark_failure(provider, e)
-            raise
+                return content
+            except Exception as e:  # noqa: BLE001
+                self._mark_failure(provider, e)
+                last_error = e
+                LOGGER.warning(f"{provider.name} exhausted its retries — cascading to next provider")
+                continue
+
+        raise RuntimeError(
+            f"All LLM providers failed or unavailable for task_type={task_type}: {last_error}"
+        )
 
     def get_stats(self) -> dict:
         return {
