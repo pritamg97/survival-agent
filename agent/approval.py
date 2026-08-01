@@ -73,15 +73,24 @@ class ApprovalGate:
 
     def check_reply(self, token: str) -> Optional[bool]:
         """Returns True (approved), False (explicitly rejected), or None (no
-        matching reply yet — caller decides what to do, e.g. keep waiting)."""
+        matching reply yet — caller decides what to do, e.g. keep waiting).
+
+        Searches by SUBJECT containing the token, not UNSEEN — the token is a
+        unique per-request id, so this is highly selective server-side. A
+        plain UNSEEN search against a real inbox can return tens of thousands
+        of message ids, and fetching each one's full RFC822 body individually
+        (as this loop does) turns into an effectively-infinite scan — this
+        happened for real with a 107k-unseen inbox. SUBJECT search also finds
+        a reply that's already been marked read, which UNSEEN alone would
+        have missed."""
         if not (CONFIG.EMAIL_IMAP_HOST and CONFIG.EMAIL_IMAP_USER):
             return None
 
         try:
-            with imaplib.IMAP4_SSL(CONFIG.EMAIL_IMAP_HOST, CONFIG.EMAIL_IMAP_PORT) as imap:
+            with imaplib.IMAP4_SSL(CONFIG.EMAIL_IMAP_HOST, CONFIG.EMAIL_IMAP_PORT, timeout=20) as imap:
                 imap.login(CONFIG.EMAIL_IMAP_USER, CONFIG.EMAIL_IMAP_PASSWORD)
                 imap.select("INBOX")
-                status, data = imap.search(None, "UNSEEN")
+                status, data = imap.search(None, "SUBJECT", token)
                 if status != "OK" or not data or not data[0]:
                     return None
 

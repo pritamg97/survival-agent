@@ -47,8 +47,19 @@ def approval_gate(state: SurvivalState) -> SurvivalState:
         result = APPROVAL.check_reply(pending["token"])
 
         if result is True:
+            # Restore the SPECIFIC opportunity/strategy this approval was
+            # requested for — opportunity_scan re-runs fresh every cycle, so
+            # by the time a reply lands, current_strategy/current_opportunities
+            # already belong to whatever this cycle's new scan produced, not
+            # the thing that was actually approved. Without this, the
+            # approval silently attaches to an unrelated strategy (verified
+            # happening for real: an approved service_arbitrage bid got
+            # "spent" on that cycle's unrelated content_farm pick instead).
             state["current_opportunity_approved"] = True
             state["approval_blocked"] = False
+            state["current_strategy"] = pending["strategy"]
+            state["current_opportunities"] = [pending["opportunity"]]
+            state["current_task"] = pending["opportunity"].get("solution")
             state["approval_history"].append({**pending, "resolution": "approved"})
             state["working_memory"].append(f"APPROVED by email: {pending['opportunity'].get('niche')}")
             LOGGER.info(f"Approval granted for token {pending['token']}")
