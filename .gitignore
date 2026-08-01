@@ -1,0 +1,14 @@
+.env
+venv/
+__pycache__/
+*.pyc
+node_modules/
+.next/
+out/
+logs/*.log
+state/state.json
+state/episodes.json
+state/semantic.json
+state/skills/*.json
+.DS_Store
+*.egg-info/
