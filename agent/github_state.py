@@ -26,10 +26,49 @@ class GitHubStateManager:
     def _contents_url(self) -> str:
         return f"{API_ROOT}/repos/{self.repo}/contents/{STATE_PATH_IN_REPO}"
 
+    def _ensure_branch_exists(self) -> None:
+        """Creates self.branch (pointing at the repo's default branch HEAD) if
+        it doesn't exist yet. Lets GITHUB_BRANCH default to something other
+        than the code's default branch (e.g. 'state') without requiring a
+        manual one-time branch creation — state pushes never need to touch
+        the same branch as code commits, avoiding merge conflicts between
+        the two entirely."""
+        try:
+            ref_resp = requests.get(
+                f"{API_ROOT}/repos/{self.repo}/git/ref/heads/{self.branch}", headers=self._headers(), timeout=15
+            )
+            if ref_resp.status_code == 200:
+                return
+
+            repo_resp = requests.get(f"{API_ROOT}/repos/{self.repo}", headers=self._headers(), timeout=15)
+            repo_resp.raise_for_status()
+            default_branch = repo_resp.json()["default_branch"]
+
+            default_ref_resp = requests.get(
+                f"{API_ROOT}/repos/{self.repo}/git/ref/heads/{default_branch}", headers=self._headers(), timeout=15
+            )
+            default_ref_resp.raise_for_status()
+            sha = default_ref_resp.json()["object"]["sha"]
+
+            create_resp = requests.post(
+                f"{API_ROOT}/repos/{self.repo}/git/refs",
+                headers=self._headers(),
+                json={"ref": f"refs/heads/{self.branch}", "sha": sha},
+                timeout=15,
+            )
+            if create_resp.status_code == 201:
+                LOGGER.info(f"Created GitHub branch '{self.branch}' for state pushes")
+            else:
+                LOGGER.warning(f"Could not create branch '{self.branch}': {create_resp.status_code} {create_resp.text}")
+        except (requests.RequestException, KeyError, ValueError) as e:
+            LOGGER.warning(f"_ensure_branch_exists failed, push may fail: {e}")
+
     def push(self, state: dict) -> bool:
         if not (self.repo and self.token):
             LOGGER.warning("GitHub not configured; skipping push")
             return False
+
+        self._ensure_branch_exists()
 
         sha = None
         try:

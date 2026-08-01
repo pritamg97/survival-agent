@@ -38,6 +38,16 @@ Set `NEXT_PUBLIC_GITHUB_USER`, `NEXT_PUBLIC_GITHUB_REPO`, and `NEXT_PUBLIC_GITHU
 in `ui/.env.local` to point it at your fork. If GitHub push fails (no token/repo
 configured), the agent falls back to writing `state/state.json` locally.
 
+**Use a separate branch for state** (`GITHUB_BRANCH`, default `state`) — not
+`main`. The agent commits a state.json update every single cycle; if that
+lands on the same branch as your code, every `git push` from your own
+terminal will conflict with whatever the agent committed while you were
+working (this happened for real building this project). `github_state.py`
+auto-creates the branch off your repo's default branch on first push if it
+doesn't already exist — no manual setup needed. Just make sure
+`NEXT_PUBLIC_GITHUB_BRANCH` in `ui/.env.local` matches whatever `GITHUB_BRANCH`
+you set, so the dashboard reads from the same place the agent writes to.
+
 ## Opportunity discovery & real-world bidding
 
 `opportunity_scan` (month 2+, "smart mode") pulls real, live signals before asking

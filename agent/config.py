@@ -54,7 +54,9 @@ class Config:
 
     GITHUB_TOKEN: str = os.environ.get("GITHUB_TOKEN", "")
     GITHUB_REPO: str = os.environ.get("GITHUB_REPO", "")
-    GITHUB_BRANCH: str = os.environ.get("GITHUB_BRANCH", "main")
+    # Deliberately not "main" by default — see .env.example for why (state
+    # pushes on the same branch as code commits caused a real conflict).
+    GITHUB_BRANCH: str = os.environ.get("GITHUB_BRANCH", "state")
 
     LANGSMITH_API_KEY: str = os.environ.get("LANGSMITH_API_KEY", "")
     LANGSMITH_PROJECT: str = os.environ.get("LANGSMITH_PROJECT", "survival-agent")
