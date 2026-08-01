@@ -1,0 +1,62 @@
+{
+  "alive": true,
+  "bank_balance": 99.9125,
+  "burn_rate_per_hour": 0.003645833333333333,
+  "runway_hours": 63976.00000000001,
+  "iteration_count": 1,
+  "day_count": 1,
+  "month_count": 1,
+  "month_start_balance": 100.0,
+  "month_start_revenue": 0.0,
+  "monthly_target": 10.0,
+  "cycle_start_time": "2026-08-01T22:50:29.781995+00:00",
+  "last_day_logged": 213,
+  "current_strategy": "content_farm",
+  "current_task": "Write SEO article for ad revenue (no opportunities found)",
+  "current_opportunities": [],
+  "emergency_mode": false,
+  "panic_mode": false,
+  "naive_mode": true,
+  "products": [],
+  "transactions": [
+    {
+      "type": "burn",
+      "amount": 0.0375,
+      "description": "Server burn",
+      "timestamp": "2026-08-01T22:50:29.877186+00:00"
+    },
+    {
+      "type": "cost",
+      "amount": 0.05,
+      "description": "Content farm: publishing cost",
+      "timestamp": "2026-08-01T22:50:43.368056+00:00"
+    }
+  ],
+  "total_revenue": 0.0,
+  "total_costs": 0.05,
+  "total_burn": 0.0375,
+  "consecutive_failures": 1,
+  "working_memory": [
+    "Strategy: content_farm | Task: Write SEO article for ad revenue (no opportunities found)",
+    "Content farm (simulated): article published, no revenue yet",
+    "Cycle 1 done: balance=$99.91, strategy=content_farm, products=0"
+  ],
+  "episodic_summary": "",
+  "semantic_facts": [],
+  "skills_available": [],
+  "reason_of_death": null,
+  "death_certificate": null,
+  "langsmith_run_id": null,
+  "provider_usage": {
+    "mistral-1": 1,
+    "mistral-2": 1,
+    "_articles_written": 1
+  },
+  "total_api_calls": 2,
+  "total_tokens_used": 1583,
+  "pending_approval": null,
+  "current_opportunity_approved": false,
+  "approval_blocked": false,
+  "approval_history": [],
+  "service_bids": []
+}
