@@ -16,12 +16,15 @@ Full design spec: see the original `SURVIVAL_AGENT_COMPLETE_SPEC.pdf`.
 
 ## Quick start
 
+Run from the repo root, not from inside `agent/` — `main.py` uses absolute
+imports (`from agent.config import ...`) that only resolve when the repo root
+is on the Python path, which is what `python -m agent.main` gives you.
+
 ```bash
-cd agent
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp ../.env.example .env   # fill in your API keys
-python main.py
+python -m venv agent/venv && source agent/venv/bin/activate
+pip install -r agent/requirements.txt
+cp .env.example .env   # fill in your API keys
+python -m agent.main
 ```
 
 ```bash
@@ -102,6 +105,52 @@ What's still not automated even in real mode: the server-burn number
 whatever you're actually hosting this on; and nothing in `execute_build`
 maintains the deployed product after launch (bug fixes, customer support,
 etc. — it just deploys once and waits for `collect_revenue` to poll for sales).
+
+## Running it 24/7 (Oracle Cloud Free Tier)
+
+The agent is a single long-running process (`python -m agent.main`), not a web
+server — no port to expose, no inbound traffic to allow. It just needs a box
+that stays powered on. [Oracle Cloud's Always Free tier](https://www.oracle.com/cloud/free/)
+gives you a real VM at $0/month, permanently, not a time-limited trial.
+
+1. **Create the VM**: sign up for Oracle Cloud, then Compute → Instances → Create
+   Instance. Pick an "Always Free eligible" shape (either the AMD
+   `VM.Standard.E2.1.Micro` or an Ampere `VM.Standard.A1.Flex` with 1 OCPU/6GB),
+   Ubuntu as the image, and download the SSH key it generates.
+2. **Push this repo to your own GitHub** if you haven't already — you need one
+   anyway for `GITHUB_REPO`/`GITHUB_TOKEN` state sync, and it's the easiest way
+   to get the code onto the VM:
+   ```bash
+   git remote add origin https://github.com/<you>/survival-agent.git
+   git push -u origin master
+   ```
+3. **SSH in and bootstrap**:
+   ```bash
+   ssh -i <your-key>.pem ubuntu@<vm-public-ip>
+   git clone https://github.com/<you>/survival-agent.git
+   cd survival-agent
+   ./deploy/setup.sh https://github.com/<you>/survival-agent.git
+   ```
+   `deploy/setup.sh` installs Python/git, creates the venv, installs
+   dependencies, and installs a `systemd` service from
+   `deploy/survival-agent.service` — no manual editing needed, it substitutes
+   your username and path automatically.
+4. **Add real secrets**: `nano .env` and fill in your keys (at minimum one LLM
+   provider + `GITHUB_TOKEN`/`GITHUB_REPO`). This file never gets committed.
+5. **Start it**:
+   ```bash
+   sudo systemctl start survival-agent
+   journalctl -u survival-agent -f   # watch the first few cycles live
+   ```
+
+`Restart=always` means a crash or VM reboot restarts the process automatically,
+and it resumes from the last state pushed to GitHub (or the local
+`state/state.json`) rather than starting over — see `main.py`'s
+`load_or_create_state()`. It will **not** restart a dead agent back to life:
+if `alive` is `false`, `main.py` exits immediately by design, so a crash-looping
+service after a death is expected, not a bug — check the dashboard's death
+screen, then clear `state/state.json` to spawn a fresh $100 agent if you want
+to try again.
 
 ## Monthly targets
 
