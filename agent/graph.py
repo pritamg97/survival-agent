@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from langgraph.graph import END, StateGraph
 
 from agent.logger import LOGGER
-from agent.nodes.approval_gate import approval_gate, needs_approval
+from agent.nodes.approval_gate import approval_gate
 from agent.nodes.collect_revenue import collect_revenue
 from agent.nodes.execute_build import execute_build
 from agent.nodes.execute_content import execute_content
@@ -52,17 +52,12 @@ def _route_strategy(state: SurvivalState) -> str:
 
 
 def _after_approval_gate(state: SurvivalState) -> str:
-    # Still waiting on an email reply this cycle -> do nothing else, just loop.
-    if state.get("pending_approval"):
+    # approval_gate.py is the single source of truth for this flag: True only
+    # while a real approval is genuinely outstanding or was just
+    # rejected/timed out. A failed-to-send email does NOT set this — that
+    # falls through to _route_strategy so execution proceeds (simulated path).
+    if state.get("approval_blocked"):
         return "collect_revenue"
-
-    opportunity = state["current_opportunities"][0] if state["current_opportunities"] else None
-    if opportunity and needs_approval(opportunity, state.get("current_strategy")) and not state.get(
-        "current_opportunity_approved"
-    ):
-        # Real bidding was required and the reply was a rejection/timeout.
-        return "collect_revenue"
-
     return _route_strategy(state)
 
 

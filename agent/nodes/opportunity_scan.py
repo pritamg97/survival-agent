@@ -5,6 +5,7 @@ from agent.memory.semantic import SemanticMemory
 from agent.router import ROUTER
 from agent.sources import gather_signals
 from agent.state import SurvivalState
+from agent.utils import extract_json, safe_float
 
 NAIVE_OPPORTUNITIES = [
     {
@@ -104,9 +105,11 @@ def opportunity_scan(state: SurvivalState) -> SurvivalState:
 
     try:
         raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="research", max_tokens=1500)
-        opportunities = json.loads(raw)
+        opportunities = json.loads(extract_json(raw))
         for opp in opportunities:
-            opp["score"] = opp.get("confidence", 1) / max(opp.get("hours_to_first_dollar", 1), 0.1)
+            confidence = safe_float(opp.get("confidence"), 1.0)
+            hours = max(safe_float(opp.get("hours_to_first_dollar"), 1.0), 0.1)
+            opp["score"] = confidence / hours
         opportunities.sort(key=lambda o: o["score"], reverse=True)
         state["current_opportunities"] = opportunities
         best = opportunities[0]["niche"] if opportunities else "none"
@@ -114,7 +117,7 @@ def opportunity_scan(state: SurvivalState) -> SurvivalState:
             f"SMART SCAN: {len(signals)} live signals -> {len(opportunities)} opportunities. Best: {best}"
         )
         LOGGER.info(f"SMART SCAN: {len(signals)} signals -> {len(opportunities)} opportunities. Best: {best}")
-    except (json.JSONDecodeError, KeyError, IndexError, RuntimeError) as e:
+    except (json.JSONDecodeError, KeyError, IndexError, ValueError, TypeError, RuntimeError) as e:
         state["current_opportunities"] = []
         state["consecutive_failures"] += 1
         LOGGER.warning(f"SMART SCAN parse failed: {e}")

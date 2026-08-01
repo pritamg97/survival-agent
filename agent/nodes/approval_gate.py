@@ -29,8 +29,17 @@ def needs_approval(opportunity: dict, strategy: str) -> bool:
 
 def approval_gate(state: SurvivalState) -> SurvivalState:
     """APPROVAL GATE — email the operator before any real-world bid, and wait
-    for an explicit reply. Fails closed: no reply, no SMTP/IMAP config, or a
-    timeout all resolve to 'not approved'."""
+    for an explicit reply.
+
+    Sets state["approval_blocked"], the single flag graph.py's routing checks
+    to decide whether to skip execution this cycle. It's only ever True while
+    a real approval is genuinely outstanding (awaiting reply) or was just
+    rejected/timed out. If the email itself couldn't even be sent — SMTP/IMAP
+    isn't configured — that's a config gap, not a deliberate rejection, so
+    this does NOT block: it leaves current_opportunity_approved False and lets
+    execution proceed, which makes execute_build/execute_content take their
+    simulated path instead of the real one. Real actions still only ever fire
+    with an actual approval on record."""
     pending = state.get("pending_approval")
 
     if pending:
@@ -39,6 +48,7 @@ def approval_gate(state: SurvivalState) -> SurvivalState:
 
         if result is True:
             state["current_opportunity_approved"] = True
+            state["approval_blocked"] = False
             state["approval_history"].append({**pending, "resolution": "approved"})
             state["working_memory"].append(f"APPROVED by email: {pending['opportunity'].get('niche')}")
             LOGGER.info(f"Approval granted for token {pending['token']}")
@@ -46,6 +56,7 @@ def approval_gate(state: SurvivalState) -> SurvivalState:
         elif result is False or elapsed_hours >= CONFIG.APPROVAL_TIMEOUT_HOURS:
             reason = "explicit reject" if result is False else "timed out"
             state["current_opportunity_approved"] = False
+            state["approval_blocked"] = True
             state["approval_history"].append({**pending, "resolution": reason})
             state["working_memory"].append(f"Bid NOT approved ({reason}): {pending['opportunity'].get('niche')}")
             LOGGER.info(f"Approval denied ({reason}) for token {pending['token']}")
@@ -53,23 +64,30 @@ def approval_gate(state: SurvivalState) -> SurvivalState:
             state["consecutive_failures"] += 1
         else:
             state["current_opportunity_approved"] = False
+            state["approval_blocked"] = True
             state["working_memory"].append(f"Awaiting approval reply (token {pending['token']})...")
         return state
 
     opp = state["current_opportunities"][0] if state["current_opportunities"] else None
     strategy = state["current_strategy"]
-    if opp and needs_approval(opp, strategy):
-        record = APPROVAL.send_request(opp, strategy=strategy)
-        state["current_opportunity_approved"] = False
-        if record:
-            state["pending_approval"] = record
-            state["working_memory"].append(
-                f"Requested approval ({strategy}): {opp.get('niche')} ({record['token']})"
-            )
-            LOGGER.info(f"Approval requested: {record['token']} ({strategy})")
-        else:
-            state["consecutive_failures"] += 1
-            state["working_memory"].append("Approval email could not be sent (SMTP not configured?)")
-            LOGGER.warning("Approval request failed to send; treating as not approved")
+
+    if not (opp and needs_approval(opp, strategy)):
+        state["approval_blocked"] = False
+        return state
+
+    record = APPROVAL.send_request(opp, strategy=strategy)
+    state["current_opportunity_approved"] = False
+
+    if record:
+        state["pending_approval"] = record
+        state["approval_blocked"] = True
+        state["working_memory"].append(f"Requested approval ({strategy}): {opp.get('niche')} ({record['token']})")
+        LOGGER.info(f"Approval requested: {record['token']} ({strategy})")
+    else:
+        state["approval_blocked"] = False
+        state["working_memory"].append(
+            f"Real {strategy} skipped (approval email not configured) — using simulated path instead"
+        )
+        LOGGER.warning("Approval email unavailable; proceeding with simulated execution instead of blocking")
 
     return state

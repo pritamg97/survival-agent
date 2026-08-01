@@ -3,6 +3,7 @@ import random
 from agent.logger import LOGGER
 from agent.metabolism import AgentDeathException, Metabolism
 from agent.state import SurvivalState
+from agent.utils import safe_float
 
 
 def execute_service(state: SurvivalState) -> SurvivalState:
@@ -27,7 +28,7 @@ def _execute_real_bid(state: SurvivalState, opportunity: dict) -> SurvivalState:
     from agent.actions.reddit_bid import post_bid_comment
     from agent.integrations.stripe_client import create_payment_link
 
-    price = float(opportunity.get("price_point") or 25)
+    price = safe_float(opportunity.get("price_point"), 25.0)
     link = create_payment_link(f"Service: {opportunity.get('niche', 'job')}", price)
 
     payment_line = f" Pay here when you're happy with the work: {link['url']}" if link else ""

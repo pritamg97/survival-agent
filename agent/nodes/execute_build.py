@@ -8,7 +8,7 @@ from agent.logger import LOGGER
 from agent.metabolism import AgentDeathException, Metabolism
 from agent.router import ROUTER
 from agent.state import SurvivalState
-from agent.utils import slugify
+from agent.utils import extract_json, safe_float, slugify
 
 
 def execute_build(state: SurvivalState) -> SurvivalState:
@@ -47,14 +47,14 @@ def _execute_real_build(state: SurvivalState, niche) -> SurvivalState:
     )
     try:
         raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="coding", max_tokens=1800)
-        spec = json.loads(raw)
-    except (json.JSONDecodeError, KeyError, RuntimeError) as e:
+        spec = json.loads(extract_json(raw))
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError, RuntimeError) as e:
         state["consecutive_failures"] += 1
         LOGGER.warning(f"execute_build (real) spec generation failed: {e}")
         return state
 
     name = spec.get("name") or "Untitled Product"
-    price = float(spec.get("price", 9.0))
+    price = safe_float(spec.get("price"), 9.0)
 
     link = create_payment_link(name, price)
     if not link:
@@ -120,11 +120,11 @@ def _execute_simulated_build(state: SurvivalState, niche) -> SurvivalState:
 
     try:
         raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="coding", max_tokens=800)
-        spec = json.loads(raw)
+        spec = json.loads(extract_json(raw))
         product = {
             "name": spec["name"],
             "description": spec.get("description", ""),
-            "price": float(spec.get("price", 9.0)),
+            "price": safe_float(spec.get("price"), 9.0),
             "status": "live",
             "url": f"https://{slugify(spec['name'])}.vercel.app",
             "customers": 0,
@@ -137,7 +137,7 @@ def _execute_simulated_build(state: SurvivalState, niche) -> SurvivalState:
         state["products"].append(product)
         state["working_memory"].append(f"Product built (simulated): {product['name']} @ ${product['price']:.2f}")
         LOGGER.info(f"Product built (simulated): {product['name']} @ ${product['price']:.2f}")
-    except (json.JSONDecodeError, KeyError, RuntimeError) as e:
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError, RuntimeError) as e:
         state["consecutive_failures"] += 1
         LOGGER.warning(f"execute_build (simulated) failed: {e}")
 
