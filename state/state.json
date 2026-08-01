@@ -1,9 +1,9 @@
 {
   "alive": true,
-  "bank_balance": 99.525,
-  "burn_rate_per_hour": 0.019791666666666662,
-  "runway_hours": 5623.0588235294135,
-  "iteration_count": 6,
+  "bank_balance": 99.4875,
+  "burn_rate_per_hour": 0.021354166666666664,
+  "runway_hours": 4658.926829268294,
+  "iteration_count": 7,
   "day_count": 1,
   "month_count": 1,
   "month_start_balance": 100.0,
@@ -11,9 +11,46 @@
   "monthly_target": 10.0,
   "cycle_start_time": "2026-08-01T22:50:29.781995+00:00",
   "last_day_logged": 213,
-  "current_strategy": "content_farm",
-  "current_task": "Write SEO article for ad revenue (no opportunities found)",
-  "current_opportunities": [],
+  "current_strategy": "service_arbitrage",
+  "current_task": "Offer freelance writing services (blog posts, case studies, tutorials) tailored to startup audiences. Lead with 'SEEKING FREELANCER' in HN posts.",
+  "current_opportunities": [
+    {
+      "niche": "Freelance Writing for Startups",
+      "problem": "Startups on Hacker News and Upwork need high-quality technical/content writing but often lack in-house writers.",
+      "solution": "Offer freelance writing services (blog posts, case studies, tutorials) tailored to startup audiences. Lead with 'SEEKING FREELANCER' in HN posts.",
+      "price_point": "$50-$150 per 1,500-word article",
+      "acquisition": "Post on HN threads (like the one linked) and Upwork with clear portfolios/links to past work.",
+      "confidence": 8,
+      "hours_to_first_dollar": 8,
+      "strategy": "service_arbitrage",
+      "source_url": "https://news.ycombinator.com/item?id=48749020",
+      "score": 1.0
+    },
+    {
+      "niche": "Remote Tech Tutorial Videos",
+      "problem": "Founders hiring freelancers on HN/Upwork often need explainer videos or tutorials for their products.",
+      "solution": "Create short-form technical tutorials (e.g., 'How to deploy X in 5 minutes') and offer them as a service to HN posters seeking freelancers.",
+      "price_point": "$200-$500 per video",
+      "acquisition": "Reply to HN threads with offers like 'I make custom tech tutorials\u2014DM for quotes.'",
+      "confidence": 7,
+      "hours_to_first_dollar": 12,
+      "strategy": "service_arbitrage",
+      "source_url": "https://news.ycombinator.com/item?id=48749020",
+      "score": 0.5833333333333334
+    },
+    {
+      "niche": "HN/Upwork Job Matching for Freelancers",
+      "problem": "Freelancers on HN/Upwork struggle to find relevant gigs quickly.",
+      "solution": "Curate and email a weekly list of top freelance gigs from HN/Upwork with a $5 fee for premium filters.",
+      "price_point": "$5/week for filtered lists",
+      "acquisition": "Post in HN comments: 'I scrape top freelance gigs\u2014DM for a free sample.'",
+      "confidence": 6,
+      "hours_to_first_dollar": 24,
+      "strategy": "content_farm",
+      "source_url": "https://news.ycombinator.com/item?id=48749020",
+      "score": 0.25
+    }
+  ],
   "emergency_mode": false,
   "panic_mode": false,
   "naive_mode": true,
@@ -84,17 +121,19 @@
       "amount": 0.05,
       "description": "Content farm: publishing cost",
       "timestamp": "2026-08-01T23:05:51.938416+00:00"
+    },
+    {
+      "type": "burn",
+      "amount": 0.0375,
+      "description": "Server burn",
+      "timestamp": "2026-08-01T23:09:37.976334+00:00"
     }
   ],
   "total_revenue": 0.0,
   "total_costs": 0.25,
-  "total_burn": 0.225,
+  "total_burn": 0.2625,
   "consecutive_failures": 3,
   "working_memory": [
-    "Cycle 1 done: balance=$99.91, strategy=content_farm, products=0",
-    "SMART SCAN: 1 live signals -> 3 opportunities. Best: Remote Work Contract Templates",
-    "Strategy: content_farm | Task: Sell customizable, legally vetted contract templates (e.g., NDA, project scope agreements) tailored for remote freelancers.",
-    "Content farm (simulated): article published, no revenue yet",
     "Cycle 2 done: balance=$99.83, strategy=content_farm, products=0",
     "SMART SCAN: 1 live signals -> 3 opportunities. Best: Freelancer Lead Generation",
     "Strategy: service_arbitrage | Task: Offer a manual vetting service to match businesses with pre-screened freelancers from HN/Reddit threads, charging a one-time fee or commission.",
@@ -110,7 +149,11 @@
     "Cycle 5 done: balance=$99.61, strategy=content_farm, products=0",
     "Strategy: content_farm | Task: Write SEO article for ad revenue (no opportunities found)",
     "Content farm (simulated): article published, no revenue yet",
-    "Cycle 6 done: balance=$99.53, strategy=content_farm, products=0"
+    "Cycle 6 done: balance=$99.53, strategy=content_farm, products=0",
+    "SMART SCAN: 1 live signals -> 3 opportunities. Best: Freelance Writing for Startups",
+    "Strategy: service_arbitrage | Task: Offer freelance writing services (blog posts, case studies, tutorials) tailored to startup audiences. Lead with 'SEEKING FREELANCER' in HN posts.",
+    "Requested approval (service_arbitrage): Freelance Writing for Startups (94bf449c)",
+    "Cycle 7 done: balance=$99.49, strategy=service_arbitrage, products=0"
   ],
   "episodic_summary": "",
   "semantic_facts": [],
@@ -123,15 +166,32 @@
     "mistral-2": 2,
     "_articles_written": 5,
     "mistral-4": 1,
-    "mistral-3": 2,
+    "mistral-3": 3,
     "mistral-6": 1,
     "mistral-5": 1
   },
-  "total_api_calls": 11,
-  "total_tokens_used": 9107,
-  "pending_approval": null,
-  "current_opportunity_approved": true,
-  "approval_blocked": false,
+  "total_api_calls": 12,
+  "total_tokens_used": 9933,
+  "pending_approval": {
+    "token": "94bf449c",
+    "opportunity": {
+      "niche": "Freelance Writing for Startups",
+      "problem": "Startups on Hacker News and Upwork need high-quality technical/content writing but often lack in-house writers.",
+      "solution": "Offer freelance writing services (blog posts, case studies, tutorials) tailored to startup audiences. Lead with 'SEEKING FREELANCER' in HN posts.",
+      "price_point": "$50-$150 per 1,500-word article",
+      "acquisition": "Post on HN threads (like the one linked) and Upwork with clear portfolios/links to past work.",
+      "confidence": 8,
+      "hours_to_first_dollar": 8,
+      "strategy": "service_arbitrage",
+      "source_url": "https://news.ycombinator.com/item?id=48749020",
+      "score": 1.0
+    },
+    "strategy": "service_arbitrage",
+    "subject": "[Survival Agent] Approve: service_arbitrage (94bf449c)",
+    "sent_at": 1785625791.788576
+  },
+  "current_opportunity_approved": false,
+  "approval_blocked": true,
   "approval_history": [
     {
       "token": "2339380b",
