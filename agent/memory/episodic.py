@@ -58,7 +58,7 @@ class EpisodicMemory:
         self._save()
         LOGGER.info(f"Episodic memory: recorded day {day} ({len(events)} events)")
 
-    def compress_day(self, day_index: int = -1) -> Optional[str]:
+    def compress_day(self, day_index: int = -1, state: Optional[dict] = None) -> Optional[str]:
         if not self._episodes:
             return None
         episode = self._episodes[day_index]
@@ -74,7 +74,7 @@ class EpisodicMemory:
         )
         try:
             summary = ROUTER.call(
-                [{"role": "user", "content": prompt}], task_type="reasoning", max_tokens=400
+                [{"role": "user", "content": prompt}], task_type="reasoning", max_tokens=400, state=state
             )
         except Exception as e:  # noqa: BLE001
             LOGGER.warning(f"Episodic compression failed: {e}")

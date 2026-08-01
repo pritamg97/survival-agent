@@ -46,7 +46,7 @@ def _execute_real_build(state: SurvivalState, niche) -> SurvivalState:
         "href is exactly the literal placeholder text {{PAYMENT_LINK}})."
     )
     try:
-        raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="coding", max_tokens=1800)
+        raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="coding", max_tokens=1800, state=state)
         spec = json.loads(extract_json(raw))
     except (json.JSONDecodeError, KeyError, ValueError, TypeError, RuntimeError) as e:
         state["consecutive_failures"] += 1
@@ -119,7 +119,7 @@ def _execute_simulated_build(state: SurvivalState, niche) -> SurvivalState:
     )
 
     try:
-        raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="coding", max_tokens=800)
+        raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="coding", max_tokens=800, state=state)
         spec = json.loads(extract_json(raw))
         product = {
             "name": spec["name"],

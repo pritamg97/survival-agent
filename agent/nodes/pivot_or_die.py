@@ -48,7 +48,7 @@ def pivot_or_die(state: SurvivalState) -> SurvivalState:
         episodic.record_day(state["day_count"], todays_txs)
 
         if len(episodic.get_all_episodes()) % 3 == 0:
-            episodic.compress_day()
+            episodic.compress_day(state=state)
             state["episodic_summary"] = episodic.get_recent_summary()
 
     return state

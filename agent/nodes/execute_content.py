@@ -40,7 +40,7 @@ def _execute_real_publish(state: SurvivalState) -> SurvivalState:
         "conclusion. Return ONLY the raw HTML — no markdown fences, no JSON, no commentary."
     )
     try:
-        html = ROUTER.call([{"role": "user", "content": prompt}], task_type="marketing", max_tokens=1800)
+        html = ROUTER.call([{"role": "user", "content": prompt}], task_type="marketing", max_tokens=1800, state=state)
     except RuntimeError as e:
         state["consecutive_failures"] += 1
         LOGGER.warning(f"execute_content (real) generation failed: {e}")
@@ -75,7 +75,7 @@ def _execute_simulated_publish(state: SurvivalState) -> SurvivalState:
     articles_written = state["provider_usage"].get("_articles_written", 0)
 
     try:
-        ROUTER.call([{"role": "user", "content": prompt}], task_type="marketing", max_tokens=1200)
+        ROUTER.call([{"role": "user", "content": prompt}], task_type="marketing", max_tokens=1200, state=state)
     except RuntimeError as e:
         state["consecutive_failures"] += 1
         LOGGER.warning(f"execute_content (simulated) generation failed: {e}")

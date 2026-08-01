@@ -104,7 +104,7 @@ def opportunity_scan(state: SurvivalState) -> SurvivalState:
     )
 
     try:
-        raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="research", max_tokens=1500)
+        raw = ROUTER.call([{"role": "user", "content": prompt}], task_type="research", max_tokens=1500, state=state)
         opportunities = json.loads(extract_json(raw))
         for opp in opportunities:
             confidence = safe_float(opp.get("confidence"), 1.0)

@@ -185,6 +185,7 @@ class ZeroCostRouter:
         temperature: float = 0.7,
         max_tokens: int = 2048,
         use_cache: bool = True,
+        state: Optional[dict] = None,
     ) -> str:
         """Tries every candidate provider for this task type, in priority
         order, until one succeeds. Each provider gets its own exponential
@@ -192,7 +193,13 @@ class ZeroCostRouter:
         method gives up on it and cascades to the next — e.g. a Mistral key
         that times out gets retried with backoff on Mistral first, and only
         moves on to Google (or the next Mistral key) once that key's own
-        retries are exhausted. Raises only if every candidate fails."""
+        retries are exhausted. Raises only if every candidate fails.
+
+        Pass the running SurvivalState as `state` to have usage recorded into
+        it (total_api_calls, provider_usage, total_tokens_used) via
+        Metabolism.burn_llm — this router's own per-provider counters
+        (current_requests_today etc.) are internal rate-limiting bookkeeping
+        only and were never wired into the state the dashboard reads."""
         cache_key = None
         if use_cache and CONFIG.ENABLE_CACHE:
             cache_key = self._get_cache_key(messages, task_type)
@@ -218,6 +225,11 @@ class ZeroCostRouter:
                 input_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
                 output_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
                 self._mark_success(provider, input_tokens + output_tokens)
+
+                if state is not None:
+                    from agent.metabolism import Metabolism
+
+                    Metabolism(state).burn_llm(provider.name, input_tokens, output_tokens, purpose=task_type)
 
                 LOGGER.info(
                     f"LLM call ok: provider={provider.name} model={model} "
