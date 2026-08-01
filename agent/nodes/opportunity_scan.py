@@ -3,6 +3,7 @@ import json
 from agent.logger import LOGGER
 from agent.memory.semantic import SemanticMemory
 from agent.router import ROUTER
+from agent.sources import gather_signals
 from agent.state import SurvivalState
 
 NAIVE_OPPORTUNITIES = [
@@ -72,14 +73,33 @@ def opportunity_scan(state: SurvivalState) -> SurvivalState:
     semantic = SemanticMemory()
     learnings = semantic.query("profitable niches money making opportunities", top_k=3)
 
+    signals = gather_signals()
+    if signals:
+        signals_digest = "\n".join(
+            f"- [{s['source']}] {s['title']} — {s['snippet']} (url: {s['url']})" for s in signals[:30]
+        )
+        grounding_instruction = (
+            "Use ONLY the real signals below (plus your past learnings) as grounding for your picks — "
+            "don't invent niches unrelated to what's actually being posted. Set source_url to the url "
+            "of the specific signal that inspired each opportunity."
+        )
+    else:
+        signals_digest = "(no live signals available this cycle — sources unconfigured or unreachable)"
+        grounding_instruction = (
+            "No live signals were available this cycle, so use your general knowledge and past learnings. "
+            "Set source_url to null."
+        )
+
     prompt = (
         f"You are a survival agent. Bank: ${state['bank_balance']:.2f}, "
         f"runway: {state['runway_hours']:.1f}h.\n"
         f"Past learnings:\n" + "\n".join(f"- {l}" for l in learnings) + "\n\n"
+        f"Real current signals from Reddit / Hacker News / Upwork:\n{signals_digest}\n\n"
+        f"{grounding_instruction}\n"
         "Propose up to 3 money-making opportunities as a JSON array. Each item must have: "
         "niche, problem, solution, price_point, acquisition, confidence (1-10), "
-        "hours_to_first_dollar, strategy (one of micro_saas, service_arbitrage, content_farm). "
-        "Return ONLY the JSON array."
+        "hours_to_first_dollar, strategy (one of micro_saas, service_arbitrage, content_farm), "
+        "source_url. Return ONLY the JSON array."
     )
 
     try:
@@ -90,8 +110,10 @@ def opportunity_scan(state: SurvivalState) -> SurvivalState:
         opportunities.sort(key=lambda o: o["score"], reverse=True)
         state["current_opportunities"] = opportunities
         best = opportunities[0]["niche"] if opportunities else "none"
-        state["working_memory"].append(f"SMART SCAN: Found {len(opportunities)} opportunities. Best: {best}")
-        LOGGER.info(f"SMART SCAN: Found {len(opportunities)} opportunities. Best: {best}")
+        state["working_memory"].append(
+            f"SMART SCAN: {len(signals)} live signals -> {len(opportunities)} opportunities. Best: {best}"
+        )
+        LOGGER.info(f"SMART SCAN: {len(signals)} signals -> {len(opportunities)} opportunities. Best: {best}")
     except (json.JSONDecodeError, KeyError, IndexError, RuntimeError) as e:
         state["current_opportunities"] = []
         state["consecutive_failures"] += 1

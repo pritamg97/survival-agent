@@ -64,6 +64,9 @@ class SurvivalState(TypedDict):
     provider_usage: Dict[str, int]
     total_api_calls: int
     total_tokens_used: int
+    pending_approval: Optional[dict]
+    current_opportunity_approved: bool
+    approval_history: List[dict]
 
 
 def create_initial_state(seed_budget: float, month_1_target: float) -> SurvivalState:
@@ -103,4 +106,7 @@ def create_initial_state(seed_budget: float, month_1_target: float) -> SurvivalS
         provider_usage={},
         total_api_calls=0,
         total_tokens_used=0,
+        pending_approval=None,
+        current_opportunity_approved=False,
+        approval_history=[],
     )

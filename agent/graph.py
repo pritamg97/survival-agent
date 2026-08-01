@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from langgraph.graph import END, StateGraph
 
 from agent.logger import LOGGER
+from agent.nodes.approval_gate import approval_gate, needs_approval
 from agent.nodes.collect_revenue import collect_revenue
 from agent.nodes.execute_build import execute_build
 from agent.nodes.execute_content import execute_content
@@ -50,6 +51,21 @@ def _route_strategy(state: SurvivalState) -> str:
     return "execute_content"
 
 
+def _after_approval_gate(state: SurvivalState) -> str:
+    # Still waiting on an email reply this cycle -> do nothing else, just loop.
+    if state.get("pending_approval"):
+        return "collect_revenue"
+
+    opportunity = state["current_opportunities"][0] if state["current_opportunities"] else None
+    if opportunity and needs_approval(opportunity, state.get("current_strategy")) and not state.get(
+        "current_opportunity_approved"
+    ):
+        # Real bidding was required and the reply was a rejection/timeout.
+        return "collect_revenue"
+
+    return _route_strategy(state)
+
+
 def _after_pivot(state: SurvivalState) -> str:
     return "kill_switch" if not state["alive"] else "log_and_sleep"
 
@@ -60,6 +76,7 @@ def build_graph(sleep: bool = True):
     graph.add_node("heartbeat", heartbeat)
     graph.add_node("opportunity_scan", opportunity_scan)
     graph.add_node("strategy_select", strategy_select)
+    graph.add_node("approval_gate", approval_gate)
     graph.add_node("execute_build", execute_build)
     graph.add_node("execute_service", execute_service)
     graph.add_node("execute_content", execute_content)
@@ -73,13 +90,15 @@ def build_graph(sleep: bool = True):
         "heartbeat", _after_heartbeat, {"kill_switch": "kill_switch", "opportunity_scan": "opportunity_scan"}
     )
     graph.add_edge("opportunity_scan", "strategy_select")
+    graph.add_edge("strategy_select", "approval_gate")
     graph.add_conditional_edges(
-        "strategy_select",
-        _route_strategy,
+        "approval_gate",
+        _after_approval_gate,
         {
             "execute_build": "execute_build",
             "execute_service": "execute_service",
             "execute_content": "execute_content",
+            "collect_revenue": "collect_revenue",
         },
     )
     graph.add_edge("execute_build", "collect_revenue")

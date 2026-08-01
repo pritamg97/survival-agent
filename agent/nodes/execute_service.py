@@ -6,10 +6,48 @@ from agent.state import SurvivalState
 
 
 def execute_service(state: SurvivalState) -> SurvivalState:
-    """EXECUTE SERVICE ARBITRAGE — act as middleman between client and cheaper worker."""
+    """EXECUTE SERVICE ARBITRAGE — act as middleman between client and cheaper worker.
+
+    If the current opportunity is a real, sourced listing that just cleared the
+    email approval gate, this posts a real reply on that thread instead of
+    simulating an outcome. Otherwise (synthetic panic/emergency tasks, or real
+    bidding not approved/enabled) it falls back to the original simulated
+    close-rate roll."""
     if state["current_strategy"] != "service_arbitrage":
         return state
 
+    opportunity = state["current_opportunities"][0] if state["current_opportunities"] else None
+    if opportunity and opportunity.get("source_url") and state.get("current_opportunity_approved"):
+        return _execute_real_bid(state, opportunity)
+
+    return _execute_simulated(state)
+
+
+def _execute_real_bid(state: SurvivalState, opportunity: dict) -> SurvivalState:
+    from agent.actions.reddit_bid import post_bid_comment
+
+    message = (
+        f"Hi — I can help with this: {opportunity.get('solution')}. "
+        f"Rate: ${opportunity.get('price_point')}. Reply here if interested."
+    )
+    posted = post_bid_comment(opportunity["source_url"], message)
+    state["current_opportunity_approved"] = False  # consume the one-time approval
+
+    if posted:
+        state["working_memory"].append(f"Posted real bid on {opportunity['source_url']}")
+        LOGGER.info(f"Posted real bid on {opportunity['source_url']}")
+        # Outcome depends on the client replying off-platform — this records the
+        # outreach, not a payment. No autonomous payment collection is wired up;
+        # revenue still only lands via metabolism.revenue() calls elsewhere.
+    else:
+        state["consecutive_failures"] += 1
+        state["working_memory"].append(f"Real bid post failed on {opportunity['source_url']}")
+        LOGGER.warning(f"Real bid post failed on {opportunity['source_url']}")
+
+    return state
+
+
+def _execute_simulated(state: SurvivalState) -> SurvivalState:
     metabolism = Metabolism(state)
     close_rate = 0.15 if state["panic_mode"] else 0.30
 

@@ -22,6 +22,13 @@ def _bool(name: str, default: bool) -> bool:
     return val.strip().lower() in ("1", "true", "yes", "on")
 
 
+def _list(name: str, default: tuple) -> tuple:
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return tuple(v.strip() for v in val.split(",") if v.strip())
+
+
 @dataclass(frozen=True)
 class Config:
     SEED_BUDGET: float = _float("SEED_BUDGET", 100.00)
@@ -70,6 +77,50 @@ class Config:
     NVIDIA_NIM_KEY: str = os.environ.get("NVIDIA_NIM_KEY", "")
     GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
     OPENROUTER_KEY: str = os.environ.get("OPENROUTER_KEY", "")
+
+    # Opportunity discovery — read-only signal sources for opportunity_scan.
+    # Reddit: create a free "script" app at reddit.com/prefs/apps (no card required).
+    # If client id/secret are unset, falls back to Reddit's unauthenticated public
+    # JSON endpoints (lower rate limits, still free, still no key needed).
+    REDDIT_CLIENT_ID: str = os.environ.get("REDDIT_CLIENT_ID", "")
+    REDDIT_CLIENT_SECRET: str = os.environ.get("REDDIT_CLIENT_SECRET", "")
+    REDDIT_USER_AGENT: str = os.environ.get("REDDIT_USER_AGENT", "survival-agent/1.0")
+    OPPORTUNITY_SUBREDDITS: tuple = field(default_factory=lambda: _list(
+        "OPPORTUNITY_SUBREDDITS",
+        ("forhire", "slavelabour", "SaaS", "Entrepreneur", "sideproject"),
+    ))
+    # Upwork has no self-serve public jobs-search API. This reads a saved-search
+    # RSS feed URL you generate from your own Upwork account (Upwork > Saved
+    # Searches > RSS) — no scraping, no key, ToS-compliant. Optional.
+    UPWORK_RSS_URL: str = os.environ.get("UPWORK_RSS_URL", "")
+
+    # Human-in-the-loop approval gate: before the agent takes any real-world
+    # action under your identity (currently: posting a Reddit reply offering
+    # services), it emails you the opportunity and waits for a reply containing
+    # APPROVE/REJECT + the token. No SMTP/IMAP config -> the gate can never
+    # resolve, so gated actions simply never fire (fail closed, not open).
+    EMAIL_SMTP_HOST: str = os.environ.get("EMAIL_SMTP_HOST", "")
+    EMAIL_SMTP_PORT: int = _int("EMAIL_SMTP_PORT", 587)
+    EMAIL_SMTP_USER: str = os.environ.get("EMAIL_SMTP_USER", "")
+    EMAIL_SMTP_PASSWORD: str = os.environ.get("EMAIL_SMTP_PASSWORD", "")
+    EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "")
+    EMAIL_IMAP_HOST: str = os.environ.get("EMAIL_IMAP_HOST", "")
+    EMAIL_IMAP_PORT: int = _int("EMAIL_IMAP_PORT", 993)
+    EMAIL_IMAP_USER: str = os.environ.get("EMAIL_IMAP_USER", "")
+    EMAIL_IMAP_PASSWORD: str = os.environ.get("EMAIL_IMAP_PASSWORD", "")
+    APPROVAL_EMAIL_TO: str = os.environ.get("APPROVAL_EMAIL_TO", "")
+    APPROVAL_TIMEOUT_HOURS: float = _float("APPROVAL_TIMEOUT_HOURS", 24.0)
+
+    # Master safety switch for any real-world action taken under your identity
+    # (e.g. posting a real Reddit comment). Defaults to False. Even when True,
+    # every gated action STILL requires a fresh per-opportunity email approval —
+    # this flag alone does not let the agent act.
+    ENABLE_REAL_BIDDING: bool = _bool("ENABLE_REAL_BIDDING", False)
+
+    # Write-scope Reddit credentials, only needed if ENABLE_REAL_BIDDING=true.
+    # Separate from REDDIT_CLIENT_ID/SECRET's read-only app-only usage above.
+    REDDIT_USERNAME: str = os.environ.get("REDDIT_USERNAME", "")
+    REDDIT_PASSWORD: str = os.environ.get("REDDIT_PASSWORD", "")
 
     def get_monthly_target(self, month: int) -> float:
         if month in self.MONTHLY_TARGETS:
