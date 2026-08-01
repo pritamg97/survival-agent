@@ -1,0 +1,92 @@
+{
+  "alive": true,
+  "bank_balance": 108.1625,
+  "burn_rate_per_hour": 0.034895833333333334,
+  "runway_hours": 63976.00000000001,
+  "iteration_count": 1,
+  "day_count": 1,
+  "month_count": 1,
+  "month_start_balance": 100.0,
+  "month_start_revenue": 0.0,
+  "monthly_target": 10.0,
+  "cycle_start_time": "2026-08-01T22:18:30.289077+00:00",
+  "last_day_logged": 213,
+  "current_strategy": "micro_saas",
+  "current_task": "Browser-based PDF merge/split/compress micro-tool",
+  "current_opportunities": [
+    {
+      "niche": "pdf-tools",
+      "problem": "People need to quickly merge/split/compress PDFs without installing software",
+      "solution": "Browser-based PDF merge/split/compress micro-tool",
+      "price_point": 5,
+      "acquisition": "SEO + Reddit r/productivity",
+      "confidence": 6,
+      "hours_to_first_dollar": 8,
+      "strategy": "micro_saas"
+    }
+  ],
+  "emergency_mode": false,
+  "panic_mode": false,
+  "naive_mode": true,
+  "products": [
+    {
+      "name": "DocMerge Pro",
+      "description": "Lightweight, browser-based tool to merge, split, compress PDFs without software installations. One-click operations, privacy-focused, no upload limits.",
+      "price": 9.0,
+      "status": "live",
+      "url": "https://docmerge-pro.vercel.app",
+      "customers": 1,
+      "revenue": 9.0,
+      "created_at": "2026-08-01T22:18:30.289077+00:00",
+      "age_cycles": 1,
+      "niche": "pdf-tools",
+      "real": false
+    }
+  ],
+  "transactions": [
+    {
+      "type": "burn",
+      "amount": 0.0375,
+      "description": "Server burn",
+      "timestamp": "2026-08-01T22:18:30.385968+00:00"
+    },
+    {
+      "type": "cost",
+      "amount": 0.8,
+      "description": "Build: Browser-based PDF merge/split/compress micro-tool",
+      "timestamp": "2026-08-01T22:18:30.389523+00:00"
+    },
+    {
+      "type": "revenue",
+      "amount": 9.0,
+      "description": "Sale (simulated): DocMerge Pro",
+      "timestamp": "2026-08-01T22:18:34.372226+00:00"
+    }
+  ],
+  "total_revenue": 9.0,
+  "total_costs": 0.8,
+  "total_burn": 0.0375,
+  "consecutive_failures": 0,
+  "working_memory": [
+    "NAIVE SCAN: Selected 'pdf-tools'",
+    "Strategy: micro_saas | Task: Browser-based PDF merge/split/compress micro-tool",
+    "Real micro_saas skipped (approval email not configured) \u2014 using simulated path instead",
+    "Product built (simulated): DocMerge Pro @ $9.00",
+    "Sale (simulated): DocMerge Pro (+$9.00)",
+    "Cycle 1 done: balance=$108.16, strategy=micro_saas, products=1"
+  ],
+  "episodic_summary": "",
+  "semantic_facts": [],
+  "skills_available": [],
+  "reason_of_death": null,
+  "death_certificate": null,
+  "langsmith_run_id": null,
+  "provider_usage": {},
+  "total_api_calls": 0,
+  "total_tokens_used": 0,
+  "pending_approval": null,
+  "current_opportunity_approved": false,
+  "approval_blocked": false,
+  "approval_history": [],
+  "service_bids": []
+}
