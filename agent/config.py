@@ -43,6 +43,13 @@ class Config:
     CYCLE_INTERVAL_MINUTES: int = _int("CYCLE_INTERVAL_MINUTES", 15)
     MAX_CONSECUTIVE_FAILURES: int = _int("MAX_CONSECUTIVE_FAILURES", 5)
     EMERGENCY_RUNWAY_HOURS: float = _float("EMERGENCY_RUNWAY_HOURS", 48.0)
+    # By spec design, month 1 is "naive mode" — a hardcoded 5-niche rotation,
+    # no real search — and real LLM-grounded opportunity discovery (Reddit/HN/
+    # Upwork signals) only activates in month 2+. Set true to skip that gate
+    # and always run smart-mode search regardless of month. Purely about
+    # which opportunities get proposed — has no effect on ENABLE_REAL_BIDDING/
+    # ENABLE_REAL_DEPLOYMENT, which still separately gate any real-world action.
+    FORCE_SMART_MODE: bool = _bool("FORCE_SMART_MODE", False)
     PANIC_RUNWAY_HOURS: float = _float("PANIC_RUNWAY_HOURS", 12.0)
 
     GITHUB_TOKEN: str = os.environ.get("GITHUB_TOKEN", "")
@@ -97,6 +104,10 @@ class Config:
         "OPPORTUNITY_SUBREDDITS",
         ("forhire", "slavelabour", "SaaS", "Entrepreneur", "sideproject"),
     ))
+    # Algolia's HN search ranks by relevance, not recency — without a cutoff,
+    # a highly-upvoted decade-old thread can outrank anything current. Posts
+    # older than this are excluded entirely.
+    HN_MAX_AGE_DAYS: int = _int("HN_MAX_AGE_DAYS", 45)
     # Upwork has no self-serve public jobs-search API. This reads a saved-search
     # RSS feed URL you generate from your own Upwork account (Upwork > Saved
     # Searches > RSS) — no scraping, no key, ToS-compliant. Optional.

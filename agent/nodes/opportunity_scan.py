@@ -1,5 +1,6 @@
 import json
 
+from agent.config import CONFIG
 from agent.logger import LOGGER
 from agent.memory.semantic import SemanticMemory
 from agent.router import ROUTER
@@ -63,7 +64,7 @@ NAIVE_OPPORTUNITIES = [
 
 def opportunity_scan(state: SurvivalState) -> SurvivalState:
     """OPPORTUNITY SCAN — find money-making opportunities."""
-    if state["naive_mode"]:
+    if state["naive_mode"] and not CONFIG.FORCE_SMART_MODE:
         idx = (state["iteration_count"] // 3) % len(NAIVE_OPPORTUNITIES)
         selected = NAIVE_OPPORTUNITIES[idx]
         state["current_opportunities"] = [selected]

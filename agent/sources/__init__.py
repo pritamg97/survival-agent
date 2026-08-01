@@ -15,7 +15,7 @@ def gather_signals(limit_per_source: int = 8) -> List[Dict]:
     for sub in CONFIG.OPPORTUNITY_SUBREDDITS:
         signals.extend(fetch_reddit(sub, limit=limit_per_source))
 
-    signals.extend(fetch_freelance_threads(limit=limit_per_source))
+    signals.extend(fetch_freelance_threads(limit=limit_per_source, max_age_days=CONFIG.HN_MAX_AGE_DAYS))
     signals.extend(fetch_saved_search())
 
     LOGGER.info(f"Opportunity signals gathered: {len(signals)} across {1 + len(CONFIG.OPPORTUNITY_SUBREDDITS)} sources")
