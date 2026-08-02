@@ -102,7 +102,33 @@ def _execute_real_build(state: SurvivalState, niche) -> SurvivalState:
     state["products"].append(product)
     state["working_memory"].append(f"REAL product deployed: {name} @ ${price:.2f} -> {live_url}")
     LOGGER.info(f"REAL product deployed: {name} @ ${price:.2f} -> {live_url} (stripe: {link['payment_link_id']})")
+
+    _promote(state, product)
     return state
+
+
+def _promote(state: SurvivalState, product: dict) -> None:
+    """Best-effort promotion for a freshly-deployed real product. Never lets
+    a promotion failure affect the build itself — the product is already
+    live and paid for either way, this is purely upside."""
+    if CONFIG.ENABLE_PROMOTION:
+        from agent.actions.promote import publish_backlink_article
+
+        article_url = publish_backlink_article(product, state=state)
+        if article_url:
+            product["backlink_article_url"] = article_url
+            state["working_memory"].append(f"Backlink article published for '{product['name']}': {article_url}")
+
+    if CONFIG.GENERATE_DIRECTORY_COPY:
+        from agent.actions.directory_submit import generate_listing_copy
+
+        copy = generate_listing_copy(product, state=state)
+        if copy:
+            product["directory_listing_copy"] = copy
+            state["working_memory"].append(
+                f"Directory listing copy ready for '{product['name']}': \"{copy.get('tagline')}\" "
+                f"— paste into TinyLaunch/Uneed/etc. yourself when ready"
+            )
 
 
 def _execute_simulated_build(state: SurvivalState, niche) -> SurvivalState:

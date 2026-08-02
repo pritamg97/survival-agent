@@ -151,6 +151,26 @@ class Config:
     VERCEL_TOKEN: str = os.environ.get("VERCEL_TOKEN", "")
     VERCEL_TEAM_ID: str = os.environ.get("VERCEL_TEAM_ID", "")
 
+    # How long a real (Stripe-backed) product gets to earn its first sale
+    # before it's marked dead and the niche is freed up for a new idea.
+    # Killed only on genuinely zero revenue after the full window — a slow
+    # start still gets the full trial.
+    PRODUCT_TRIAL_DAYS: int = _int("PRODUCT_TRIAL_DAYS", 14)
+
+    # Promotion: after a real product deploys, write+publish a short article
+    # backlinking to it — safe, no third-party account/login needed anywhere.
+    # Goes through the same email approval as the deploy itself (it only runs
+    # once ENABLE_REAL_DEPLOYMENT has already been approved for this product).
+    ENABLE_PROMOTION: bool = _bool("ENABLE_PROMOTION", False)
+
+    # Micro-SaaS launch directories (TinyLaunch etc.) require creating an
+    # account and logging in to submit — not a simple anonymous form, so this
+    # does NOT automate submission (that would mean the agent holding
+    # directory-site login credentials under your identity). It only
+    # generates ready-to-paste listing copy (title/tagline/description) that
+    # you submit yourself, whenever you want, with your own account.
+    GENERATE_DIRECTORY_COPY: bool = _bool("GENERATE_DIRECTORY_COPY", False)
+
     def get_monthly_target(self, month: int) -> float:
         if month in self.MONTHLY_TARGETS:
             return self.MONTHLY_TARGETS[month]

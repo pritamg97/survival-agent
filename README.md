@@ -116,6 +116,32 @@ whatever you're actually hosting this on; and nothing in `execute_build`
 maintains the deployed product after launch (bug fixes, customer support,
 etc. — it just deploys once and waits for `collect_revenue` to poll for sales).
 
+## Product trials & promotion
+
+A real product isn't judged forever — `PRODUCT_TRIAL_DAYS` (default 14) is
+how long it gets to earn its first real sale before `pivot_or_die` marks it
+dead and frees the niche for a new idea. A product with *any* real revenue
+never gets killed by this, no matter how small; only genuinely zero revenue
+after the full trial window ends it.
+
+A deployed-but-unpromoted product will almost never sell — nobody finds an
+unlinked URL. Two optional, gated promotion steps run automatically right
+after a real deploy succeeds (same approval as the deploy itself, no extra
+round-trip):
+
+- **`ENABLE_PROMOTION`** — writes and deploys a short backlink article about
+  the problem the product solves, linking back to it. No third-party
+  platform involved (just another Vercel deploy), so nothing to get banned
+  from and nothing that breaks when a form changes. Slow — SEO traffic takes
+  time to build — but robust.
+- **`GENERATE_DIRECTORY_COPY`** — generates ready-to-paste listing copy
+  (title/tagline/description) for launch directories like TinyLaunch or
+  Uneed. Deliberately does **not** submit anywhere: those sites require
+  creating an account and logging in, and the agent holding directory-site
+  credentials under your identity is a step further than this project takes
+  automatically. You paste the generated copy in yourself, on your own
+  account, whenever you want to.
+
 ## Running it 24/7 (Oracle Cloud Free Tier)
 
 The agent is a single long-running process (`python -m agent.main`), not a web
